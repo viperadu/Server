@@ -34,6 +34,7 @@ public class RequestListener extends Thread implements Runnable {
 			start();
 		} catch (BindException e) {
 			Utils.LOG(TAG + "Port already in use", DEBUGGING, LOGGING);
+			System.err.println("Port already in use");
 			//postError(e, ERROR_BIND_FAILED);
 			throw e;
 		}

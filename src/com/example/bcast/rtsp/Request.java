@@ -32,14 +32,13 @@ public class Request {
 		if ((line = input.readLine()) == null) {
 			throw new SocketException("Client disconnected");
 		}
-		System.out.println("");
-		Utils.LOG(TAG + line, DEBUGGING, LOGGING);
+		Utils.LOG("\t" + TAG + line, DEBUGGING, LOGGING);
 		matcher = regexMethod.matcher(line);
 		matcher.find();
 		request.method = matcher.group(1);
 		request.uri = matcher.group(2);
 		while ((line = input.readLine()) != null && line.length() > 3) {
-			Utils.LOG(TAG + line, DEBUGGING, LOGGING);
+			Utils.LOG("\t" + TAG + line, DEBUGGING, LOGGING);
 			matcher = regexHeader.matcher(line);
 			matcher.find();
 			request.headers.put(matcher.group(1).toLowerCase(Locale.US),
@@ -48,8 +47,6 @@ public class Request {
 		if (line == null) {
 			throw new SocketException("Client disconnected");
 		}
-		// Utils.LOG(TAG + request.method + " " + request.uri, DEBUGGING,
-		// LOGGING);
 		return request;
 	}
 }

@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import com.example.bcast.Global;
 import com.example.bcast.audio.AudioStream;
 import com.example.bcast.stream.Stream;
+import com.example.bcast.video.H264;
 import com.example.bcast.video.MP4Config;
 import com.example.bcast.video.VideoStream;
 
@@ -68,8 +69,18 @@ public class Session implements Serializable {
 		mOrigin = origin;
 	}
 	
+	public InetAddress getOrigin() {
+		return mOrigin;
+	}
+	
 	public void setDestination(InetAddress destination) throws IllegalStateException {
 		mDestination =  destination;
+	}
+	
+	public void setMP4Config(MP4Config mConfig) {
+		if(mVideoStream instanceof H264) {
+			((H264)mVideoStream).setMP4Config(mConfig);
+		}
 	}
 	
 	public String getSessionDescription() throws IllegalStateException, IOException {

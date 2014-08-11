@@ -3,7 +3,8 @@ package com.example.bcast.video;
 import java.io.Serializable;
 
 public class VideoQuality implements Serializable {
-
+	private static final long serialVersionUID = 1L;
+	
 	public int framerate = 0;
 	public int bitrate = 0;
 	public int resX = 0;
@@ -55,6 +56,10 @@ public class VideoQuality implements Serializable {
 			catch (IndexOutOfBoundsException ignore) {}
 		}
 		return quality;
+	}
+	
+	public String toString() {
+		return (bitrate/1000) + "-" + framerate + "-" + resX + "-" + resY;
 	}
 
 	public static VideoQuality merge(VideoQuality videoQuality, VideoQuality withVideoQuality) {

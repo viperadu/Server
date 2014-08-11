@@ -47,6 +47,7 @@ public class Response {
 				content;
 		
 		System.out.println("");
+//		Utils.LOG(TAG + status, DEBUGGING, LOGGING);
 		Utils.LOG(TAG + response, DEBUGGING, LOGGING);
 		output.write(response.getBytes());
 	}

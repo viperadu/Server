@@ -18,7 +18,7 @@ import com.example.bcast.utils.Utils;
 
 public class WorkerThread extends Thread implements Runnable {
 	// rtsp server care ofera stream-urile spre vizualizare
-	public static final String TAG = "Server: ";
+	public static final String TAG = "RTSPServer: ";
 	public static final boolean DEBUGGING = true;
 	public static final boolean LOGGING = true;
 
@@ -29,6 +29,7 @@ public class WorkerThread extends Thread implements Runnable {
 	
 	private Viewer mViewer = null;
 	private Uploader mUploader = null;
+	private boolean addedToViewerList = false;
 
 	public WorkerThread(Socket clientSocket) throws IOException {
 		mClientSocket = clientSocket;
@@ -60,7 +61,9 @@ public class WorkerThread extends Thread implements Runnable {
 			}
 			if (request != null) {
 				try {
-					mViewer = new Viewer(mClientSocket.getInetAddress());
+					if(mViewer == null) {
+						mViewer = new Viewer(mClientSocket.getInetAddress());
+					}
 					response = processRequest(request);
 				} catch (Exception e) {
 					Utils.LOG(TAG + "An error occurred", DEBUGGING, LOGGING);
@@ -92,17 +95,28 @@ public class WorkerThread extends Thread implements Runnable {
 		Response response = new Response(request);
 		
 		if(mUploader == null) {
-			for(Uploader u : Global.mUploaders) {
-				if(u.mName.equals(request.uri.substring(request.uri.lastIndexOf("/") + 1))) {
-					mUploader = u;
-					break;
-				}
+//			int count = 0;
+//			for(Uploader u : Global.mUploaders) {
+//				if(u.mName.equals(request.uri.substring(request.uri.lastIndexOf("/") + 1))) {
+//					mUploader = u;
+//					uploaderIndex = count;
+//					break;
+//				}
+//				count++;
+//			}
+			mUploader = Global.getUploaderByURI(request.uri);
+			if(mUploader == null) {
+				System.err.println(TAG + "uploader is null");
+				response.status = Response.STATUS_BAD_REQUEST;
+				return response;
+			} else {
+				System.out.println(TAG + "uploader found");
 			}
 		}
 		
-		if(mViewer == null) {
-			mViewer = new Viewer(mClientSocket.getInetAddress());
-		}
+//		if(mViewer == null) {
+//			mViewer = new Viewer(mClientSocket.getInetAddress());
+//		}
 
 		// DESCRIBE method
 		if (request.method.equalsIgnoreCase("DESCRIBE")) {
@@ -116,11 +130,14 @@ public class WorkerThread extends Thread implements Runnable {
 			
 
 //			String requestContent = Global.mPairs.get(0).getFirst().getSessionDescription();
-			String requestContent = mUploader.mSession.getSessionDescription();
+			String requestContent = "";
+			try {
+				requestContent = mUploader.mSession.getSessionDescription();
+			} catch (Exception e) {
+				//TODO: user requested a stream that is no longer available or incorrect
+			}
 			
-			//TODO: delete this
-			System.err.println(requestContent);
-			
+			//TODO: delete this			
 			String requestAttributes = "Content-Base: "
 					+ mClientSocket.getLocalAddress().getHostAddress() + ":"
 					+ mClientSocket.getLocalPort() + "/\r\n"
@@ -172,20 +189,22 @@ public class WorkerThread extends Thread implements Runnable {
 				p2 = ports[1];
 			} else {
 				p1 = Integer.parseInt(m.group(1));
-				Utils.LOG(TAG + "p1 = " + p1, DEBUGGING, LOGGING);
+//				Utils.LOG(TAG + "p1 = " + p1, DEBUGGING, LOGGING);
 				p2 = Integer.parseInt(m.group(2));
-				Utils.LOG(TAG + "p2 = " + p2, DEBUGGING, LOGGING);
-				mViewer.mDestinationPorts[trackId * 2] = p1;
-				mViewer.mDestinationPorts[trackId * 2 + 1] = p2;
+//				Utils.LOG(TAG + "p2 = " + p2, DEBUGGING, LOGGING);
+//				mViewer.mDestinationPorts[trackId * 2] = p1;
+//				mViewer.mDestinationPorts[trackId * 2 + 1] = p2;
 			}
 			
 			// TODO: delete this if statement
-			if(trackId == 0) {
+//			if(trackId == 0) {
 				ssrc = mUploader.mSSRC;
-			} else {
-				ssrc = mUploader.mSSRC + 1;
-			}
-//			src = mSession.getTrack(trackId).getLocalPorts();
+//			} else {
+//				ssrc = mUploader.mSSRC + 1;
+//			}
+
+				
+				//			src = mSession.getTrack(trackId).getLocalPorts();
 //			src = new int[] {mClientSocket.getLocalPort(), mClientSocket.getLocalPort() + 1};
 			
 			if(trackId == 0) {
@@ -223,9 +242,6 @@ public class WorkerThread extends Thread implements Runnable {
 			
 			
 			
-			
-			
-			
 			response.attributes = "Transport: RTP/AVP/UDP;"
 					+ (destination.isMulticastAddress() ? "multicast"
 							: "unicast") + ";destination="
@@ -243,9 +259,7 @@ public class WorkerThread extends Thread implements Runnable {
 			response.status = Response.STATUS_OK;
 			// PLAY method
 		} else if (request.method.equalsIgnoreCase("PLAY")) {
-			
 			String requestAttributes = "RTP-Info: ";
-//				if (Global.mPairs.get(0).getFirst().trackExists(0)) {
 				if(mUploader.mSession.trackExists(0)) {
 					requestAttributes += "url=rtsp://"
 							+ mClientSocket.getLocalAddress().getHostAddress() + ":"
@@ -253,7 +267,6 @@ public class WorkerThread extends Thread implements Runnable {
 							+ mClientSocket.getLocalPort() + "/trackID=" + 0
 							+ ";seq=0,";
 				}
-//				if (Global.mPairs.get(0).getFirst().trackExists(1)) {
 				if(mUploader.mSession.trackExists(1)) {
 					requestAttributes += "url=rtsp://"
 							+ mClientSocket.getLocalAddress().getHostAddress() + ":"
@@ -265,17 +278,24 @@ public class WorkerThread extends Thread implements Runnable {
 						+ "\r\nSession: 1185d20035702ca\r\n";
 				response.attributes = requestAttributes;
 				response.status = Response.STATUS_OK;
-				if(mViewer != null && mViewer.mDestinationPorts.length == 4 && mViewer.mDestination != null) {
-					mUploader.addViewer(mViewer);
+				if(addedToViewerList) {
+					Global.playViewer(mViewer, mUploader);
+				}	
+				if(mViewer != null && mViewer.mDestination != null && !addedToViewerList) {
+					Global.addViewer(mViewer, mUploader);
 					Utils.LOG(TAG + " User " + mClientSocket.getInetAddress() + " added to the receivers list of " + mUploader.mName, DEBUGGING, LOGGING);
+					addedToViewerList = true;
 				}
 			// PAUSE method
 		} else if (request.method.equalsIgnoreCase("PAUSE")) {
 			response.status = Response.STATUS_OK;
+			// TODO: stop transmitting
+			Global.pauseViewer(mViewer, mUploader);
 			// TEARDOWN method
 		} else if (request.method.equalsIgnoreCase("TEARDOWN")) {
 			response.status = Response.STATUS_OK;
-			mUploader.removeViewer(mViewer);
+			Global.removeViewer(mViewer, mUploader);
+			Utils.LOG(TAG + Global.mUploaders.get(Global.getUploaderIndex(mUploader)).mViewers.size() + " still connected to \"" + mUploader.mName + "\" stream", DEBUGGING, LOGGING);
 		} else {
 			Utils.LOG("Command unknown: " + request, DEBUGGING, LOGGING);
 			response.status = Response.STATUS_BAD_REQUEST;
@@ -283,7 +303,7 @@ public class WorkerThread extends Thread implements Runnable {
 		return response;
 	}
 
-	protected Session handleRequest(String uri, Socket client)
+	/*protected Session handleRequest(String uri, Socket client)
 			throws IllegalStateException, IOException {
 		Session session = new Session();
 		// TODO: add the session parameters, parsed from the existing stream.
@@ -301,7 +321,7 @@ public class WorkerThread extends Thread implements Runnable {
 			mSession.setDestination(client.getInetAddress());
 		}
 		return mSession;
-	}
+	}*/
 
 	/*
 	static class UriParser {

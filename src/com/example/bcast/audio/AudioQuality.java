@@ -52,5 +52,9 @@ public class AudioQuality implements Serializable {
 		}
 		return audioQuality;
 	}
+	
+	public String toString() {
+		return (bitRate / 1000) + "-" + samplingRate;
+	}
 
 }

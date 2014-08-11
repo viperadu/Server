@@ -6,7 +6,7 @@ public abstract class AudioStream extends MediaStream {
 	protected int mAudioSource;
 	protected int mOutputFormat;
 	protected int mAudioEncoder;
-	protected AudioQuality mQuality = AudioQuality.DEFAULT_AUDIO_QUALITY.clone();
+	public AudioQuality mQuality;// = AudioQuality.DEFAULT_AUDIO_QUALITY.clone();
 	
 	public void setAudioQuality(AudioQuality quality) {
 		mQuality = quality;
@@ -16,7 +16,11 @@ public abstract class AudioStream extends MediaStream {
 		return mQuality;
 	}
 	
-	
+	//TODO: change this with the proper bitrate
+	@Override
+	public long getBitrate() {
+		return mQuality.bitRate;
+	}
 	
 	
 }
